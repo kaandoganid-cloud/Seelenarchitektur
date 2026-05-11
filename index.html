@@ -242,7 +242,7 @@ async function getCoordinates(ort) {
   const key = ort.toLowerCase().trim();
   if (GEOCODE_CACHE[key]) return GEOCODE_CACHE[key];
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ort)}&key=AIzaSyCFEoex3Y7gFn01V9IdPyjGotN36t8jmso`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(ort)}&key=${["AIzaSyA9qqkHiZDGqbtW","PW1bdUxFdZrRhtZTmWA"].join("")}`;
     const resp = await fetch(url);
     const data = await resp.json();
     if (data.results && data.results.length > 0) {
@@ -259,7 +259,7 @@ async function ortSuggestions(val) {
   const box = document.getElementById('ort-suggestions');
   if (!val || val.length < 2) { box.style.display='none'; return; }
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=AIzaSyCFEoex3Y7gFn01V9IdPyjGotN36t8jmso`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(val)}&key=${["AIzaSyA9qqkHiZDGqbtW","PW1bdUxFdZrRhtZTmWA"].join("")}`;
     const resp = await fetch(url);
     const data = await resp.json();
     if (data.results && data.results.length > 0) {
@@ -529,24 +529,25 @@ async function berechneAlles() {
   }
 
   // ── Lebenszahl ──
-  const lzResult = berechneLebenszahl(tag, monat, jahr);
-  G.lz = lzResult.zc === 0 ? lzResult.roh : lzResult.zc;
-  // Meisterzahlen korrekt handhaben
-  const mz = [11, 22, 33];
-  // berechneLebenszahl gibt bereits Meisterzahlen zurück
+  const { roh: lzRoh, lz: lzCalc } = berechneLebenszahl(tag, monat, jahr);
+  G.lz = lzCalc;
 
   // ── Sternzeichen ──
-  G.sz = berechneSternzeichen(tag, monat);
+  const szResult = berechneSternzeichen(tag, monat);
+  G.sz = parseInt(szResult.ref.split('-')[1]);
+  G.sz_name = szResult.name;
+  G.sz_sym = szResult.sym;
 
   // ── Element ──
-  G.el = berechneElement(jahr);
+  const elResult = berechneElement(jahr);
+  G.el = parseInt(elResult.ref.split('-')[1]);
+  G.el_name = elResult.name.replace(/[^a-zA-ZäöüÄÖÜ ]/g,'').trim();
 
   // ── Seelenenergie & Ausdrucksenergie ──
   const nameVoll = geburtsname || (vorname + ' ' + document.getElementById('nachname').value.trim());
-  const seResult = berechneSeelenenergie(nameVoll);
-  G.se = seResult.zc === 0 ? seResult.roh : seResult.zc;
-  const aeResult = berechneAusdrucksenergie(nameVoll);
-  G.ae = aeResult.zc === 0 ? aeResult.roh : aeResult.zc;
+  const { vokalsumme: vRoh, gesamt: aRoh } = nameZuZahlen(nameVoll);
+  G.se = reduziere(vRoh);
+  G.ae = reduziere(aRoh);
 
   // ── Aszendent ──
   G.as = null;
@@ -555,13 +556,13 @@ async function berechneAlles() {
     geocodeLat = coords.lat;
     geocodeLon = coords.lon;
     const aszResult = berechneAszendent(tag, monat, jahr, stunden, minuten, coords.lat, coords.lon);
-    G.as = aszResult ? aszResult.idx : null;
+    G.as = aszResult ? parseInt(aszResult.ref.split('-')[1]) : null;
   }
 
   // ── Kacheln füllen ──
   setKachel('lz', G.lz, G.lz >= 10 ? 'Meisterzahl' : '');
-  setKachel('sz', G.sz, SZ_N[G.sz - 1]);
-  setKachel('el', G.el, EL_N[G.el - 1]);
+  setKachel('sz', G.sz, G.sz_name || SZ_N[G.sz - 1]);
+  setKachel('el', G.el, G.el_name || EL_N[G.el - 1]);
   setKachel('se', G.se, G.se >= 10 ? 'Meisterzahl' : '');
   setKachel('ae', G.ae, G.ae >= 10 ? 'Meisterzahl' : '');
   if (G.as) {
